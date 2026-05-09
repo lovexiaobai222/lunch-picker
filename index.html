@@ -152,12 +152,9 @@
     </div>
 
     <script>
-      // ===== 在这里填入你的 npoint.io bin ID =====
-      const NPOINT_ID = "727e7d0b90aeaa13615f";
-      // 例如: const NPOINT_ID = 'abc123def456';
-      // ============================================
-
-      const NPOINT_API = `https://api.npoint.io/${NPOINT_ID}`;
+      const JSONBIN_ID = "69feac59adc21f119a744206";
+      const JSONBIN_KEY = "$2a$10$0J7j8Te8JkTwmPBc8VuVJOTJjT7CGupooiaabT3ErcTNuP5.h.n2a";
+      const JSONBIN_API = `https://api.jsonbin.io/v3/b/${JSONBIN_ID}`;
 
       const COLORS = [
         "#f97316",
@@ -179,9 +176,11 @@
 
       async function loadOptions() {
         try {
-          const res = await fetch(NPOINT_API);
+          const res = await fetch(`${JSONBIN_API}/latest`, {
+            headers: { "X-Access-Key": JSONBIN_KEY },
+          });
           const data = await res.json();
-          options = data.options || [];
+          options = data.record?.options || [];
         } catch {
           const saved = localStorage.getItem("lunch-options");
           if (saved) {
@@ -206,9 +205,12 @@
         if (saving) return;
         saving = true;
         try {
-          await fetch(NPOINT_API, {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
+          await fetch(JSONBIN_API, {
+            method: "PUT",
+            headers: {
+              "Content-Type": "application/json",
+              "X-Access-Key": JSONBIN_KEY,
+            },
             body: JSON.stringify({ options }),
           });
         } catch {
@@ -400,9 +402,11 @@
         btn.textContent = "刷新中...";
         btn.disabled = true;
         try {
-          const res = await fetch(NPOINT_API);
+          const res = await fetch(`${JSONBIN_API}/latest`, {
+            headers: { "X-Access-Key": JSONBIN_KEY },
+          });
           const data = await res.json();
-          options = data.options || [];
+          options = data.record?.options || [];
           localStorage.setItem("lunch-options", JSON.stringify(options));
           renderAll();
           showToast("已同步最新数据");
