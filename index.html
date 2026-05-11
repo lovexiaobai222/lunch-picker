@@ -108,13 +108,39 @@
         </div>
       </div>
 
+      <!-- 幸运数字 -->
+      <div class="flex justify-center mb-4">
+        <div
+          class="flex items-center gap-2 bg-white rounded-xl shadow px-4 py-2"
+        >
+          <label
+            for="luckyNumber"
+            class="text-sm text-gray-600 whitespace-nowrap"
+            >🎯 幸运数字</label
+          >
+          <input
+            type="number"
+            id="luckyNumber"
+            placeholder="输入任意数字"
+            class="w-28 px-3 py-1 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-400 focus:border-transparent text-sm text-center"
+          />
+          <button
+            onclick="spin()"
+            class="px-4 py-1 bg-gradient-to-r from-orange-500 to-red-500 text-white rounded-lg font-bold text-sm shadow hover:shadow-md hover:scale-105 active:scale-95 transition-all whitespace-nowrap"
+          >
+            命中
+          </button>
+        </div>
+      </div>
+
       <!-- 结果展示 -->
       <div
         id="result"
         class="hidden mb-6 bg-white rounded-2xl shadow-lg p-6 text-center fade-in"
       >
         <p class="text-gray-500 text-sm mb-1">今天就吃</p>
-        <p id="resultText" class="text-2xl font-bold text-orange-600"></p>
+        <p id="resultText" class="text-2xl font-bold text-orange-600 mb-2"></p>
+        <p id="resultPrice" class="text-lg text-amber-500 font-semibold"></p>
       </div>
 
       <!-- 选项管理 -->
@@ -139,6 +165,13 @@
             class="flex-1 px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-400 focus:border-transparent text-sm"
             onkeydown="if (event.key === 'Enter') addOption();"
           />
+          <input
+            type="number"
+            id="newPrice"
+            placeholder="价格"
+            class="w-20 px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-400 focus:border-transparent text-sm text-center"
+            onkeydown="if (event.key === 'Enter') addOption();"
+          />
           <button
             onclick="addOption()"
             class="px-5 py-2 bg-orange-500 text-white rounded-lg hover:bg-orange-600 active:bg-orange-700 transition-colors text-sm font-medium whitespace-nowrap"
@@ -153,7 +186,8 @@
 
     <script>
       const JSONBIN_ID = "69feac59adc21f119a744206";
-      const JSONBIN_KEY = "$2a$10$0J7j8Te8JkTwmPBc8VuVJOTJjT7CGupooiaabT3ErcTNuP5.h.n2a";
+      const JSONBIN_KEY =
+        "$2a$10$0J7j8Te8JkTwmPBc8VuVJOTJjT7CGupooiaabT3ErcTNuP5.h.n2a";
       const JSONBIN_API = `https://api.jsonbin.io/v3/b/${JSONBIN_ID}`;
 
       const COLORS = [
@@ -187,15 +221,18 @@
             options = JSON.parse(saved);
           } else {
             options = [
-              "老花溪牛肉粉",
-              "隆江猪脚饭",
-              "牛关关",
-              "炒菜",
-              "黄妈面馆",
-              "土家洋芋饭",
+              { name: "老花溪牛肉粉", price: 12 },
+              { name: "隆江猪脚饭", price: 18 },
+              { name: "牛关关", price: 20 },
+              { name: "炒菜", price: 25 },
+              { name: "黄妈面馆", price: 13 },
+              { name: "土家洋芋饭", price: 16 },
             ];
           }
         }
+        options = options.map((o) =>
+          typeof o === "string" ? { name: o, price: 0 } : o,
+        );
         localStorage.setItem("lunch-options", JSON.stringify(options));
         renderAll();
       }
@@ -279,7 +316,8 @@
           ctx.textAlign = "center";
           ctx.textBaseline = "middle";
 
-          const text = opt.length > 6 ? opt.slice(0, 6) + "…" : opt;
+          const label = opt.name;
+          const text = label.length > 6 ? label.slice(0, 6) + "…" : label;
           ctx.fillText(text, r * 0.6, 0);
           ctx.restore();
         });
@@ -306,8 +344,15 @@
         btn.disabled = true;
         document.getElementById("result").classList.add("hidden");
 
-        const extraTurns = 5 + Math.floor(Math.random() * 5);
-        const randomAngle = Math.random() * 360;
+        const luckyInput = document.getElementById("luckyNumber").value;
+        let seed = Math.random();
+        if (luckyInput !== "") {
+          const n = parseFloat(luckyInput);
+          const hash = Math.abs(Math.sin(n * 9301 + 49297) * 233280);
+          seed = (seed + (hash % 1)) / 2;
+        }
+        const extraTurns = 5 + Math.floor(seed * 5);
+        const randomAngle = (seed * 360 * 97) % 360;
         const totalRotation = extraTurns * 360 + randomAngle;
         currentRotation += totalRotation;
 
@@ -322,7 +367,10 @@
           const index = Math.floor(pointerAngle / sliceAngle) % options.length;
 
           const resultEl = document.getElementById("result");
-          document.getElementById("resultText").textContent = options[index];
+          const chosen = options[index];
+          document.getElementById("resultText").textContent = chosen.name;
+          document.getElementById("resultPrice").textContent =
+            chosen.price > 0 ? `人均 ¥${chosen.price}` : "人均 未设置";
           resultEl.classList.remove("hidden");
           resultEl.classList.remove("fade-in");
           void resultEl.offsetWidth;
@@ -335,14 +383,18 @@
 
       function addOption() {
         const input = document.getElementById("newOption");
+        const priceInput = document.getElementById("newPrice");
         const val = input.value.trim();
         if (!val) return;
-        if (options.includes(val)) {
+        if (options.some((o) => o.name === val)) {
           input.value = "";
+          priceInput.value = "";
           return;
         }
-        options.push(val);
+        const price = parseFloat(priceInput.value) || 0;
+        options.push({ name: val, price });
         input.value = "";
+        priceInput.value = "";
         saveOptions();
         renderAll();
       }
@@ -366,7 +418,8 @@
               `<div class="flex items-center justify-between px-3 py-2 bg-gray-50 rounded-lg group">
           <span class="text-sm text-gray-700 flex items-center gap-2">
             <span class="w-3 h-3 rounded-full inline-block" style="background:${COLORS[i % COLORS.length]}"></span>
-            ${escapeHtml(opt)}
+            ${escapeHtml(opt.name)}
+            ${opt.price > 0 ? `<span class="text-xs text-amber-500">¥${opt.price}</span>` : ""}
           </span>
           <button
             onclick="removeOption(${i})"
